@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using Ndjson.AsyncStreams.AspNetCore.Mvc;
 using Demo.WeatherForecasts;
 using System.Threading;
+using System.Runtime.CompilerServices;
 
 namespace Demo.Ndjson.AsyncStreams.AspNetCore.Mvc
 {
@@ -61,7 +62,7 @@ namespace Demo.Ndjson.AsyncStreams.AspNetCore.Mvc
             return Ok();
         }
 
-        private async IAsyncEnumerable<WeatherForecast> StreamWeatherForecastsAsync(CancellationToken cancellationToken = default(CancellationToken))
+        private async IAsyncEnumerable<WeatherForecast> StreamWeatherForecastsAsync([EnumeratorCancellation] CancellationToken cancellationToken = default(CancellationToken))
         {
             for (int daysFromToday = 1; daysFromToday <= 10; daysFromToday++)
             {
