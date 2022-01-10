@@ -7,7 +7,9 @@
 
 <button @onclick="FetchWeatherForecastsJson">Fetch Weather Forecast</button>
 <button @onclick="StreamWeatherForecastsJson">Stream Weather Forecast (JSON)</button>
+<button @onclick="CancelButton_Stream">Cancel stream</button>
 <button @onclick="StreamWeatherForecastsNdjson">Stream Weather Forecast (NDJSON)</button>
+<div>@CancellationMessage</div>
 <hr />
 <table>
     <thead>
@@ -32,6 +34,9 @@
 </table>
 
 @code {
+    private string CancellationMessage = null;
+
+    private CancellationTokenSource _cts;
 
     private List<WeatherForecast> weatherForecasts = new List<WeatherForecast>();
 
@@ -44,24 +49,42 @@
     {
         weatherForecasts = new List<WeatherForecast>();
 
-        StateHasChanged();
-
-        HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, "api/WeatherForecasts/negotiate-stream");
-        request.Headers.Add("Accept", "application/json");
-        request.SetBrowserResponseStreamingEnabled(true);
-
-        using HttpResponseMessage response = await Http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
-
-        response.EnsureSuccessStatusCode();
-
-        using Stream responseStream = await response.Content.ReadAsStreamAsync();
-
-        await foreach (WeatherForecast weatherForecast in JsonSerializer.DeserializeAsyncEnumerable<WeatherForecast>(responseStream, new JsonSerializerOptions { PropertyNameCaseInsensitive = true, DefaultBufferSize = 128 }))
+        try
         {
-            weatherForecasts.Add(weatherForecast);
+            _cts = new CancellationTokenSource();
 
             StateHasChanged();
+
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, "api/WeatherForecasts/negotiate-stream");
+            request.Headers.Add("Accept", "application/json");
+            request.SetBrowserResponseStreamingEnabled(true);
+
+            using HttpResponseMessage response = await Http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, _cts.Token);
+
+            response.EnsureSuccessStatusCode();
+
+            using Stream responseStream = await response.Content.ReadAsStreamAsync();
+
+            await foreach (WeatherForecast weatherForecast in JsonSerializer.DeserializeAsyncEnumerable<WeatherForecast>(responseStream, new JsonSerializerOptions { PropertyNameCaseInsensitive = true, DefaultBufferSize = 128 }))
+            {
+                weatherForecasts.Add(weatherForecast);
+
+                StateHasChanged();
+            }
         }
+        catch (OperationCanceledException ex)
+        {
+            CancellationMessage = "Stream cancelled";
+        }
+        finally
+        {
+            _cts.Dispose();
+            _cts = null;
+        }
+    }
+    public void CancelButton_Stream()
+    {
+        _cts.Cancel();
     }
 
     private async Task StreamWeatherForecastsNdjson()
@@ -85,4 +108,4 @@
             StateHasChanged();
         }
     }
-}
+    }

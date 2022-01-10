@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Ndjson.AsyncStreams.AspNetCore.Mvc;
 using Demo.WeatherForecasts;
+using System.Threading;
 
 namespace Demo.Ndjson.AsyncStreams.AspNetCore.Mvc
 {
@@ -43,9 +44,9 @@ namespace Demo.Ndjson.AsyncStreams.AspNetCore.Mvc
 
         [HttpGet("negotiate-stream")]
         // This action returns JSON or NDJSON depending on Accept request header.
-        public IAsyncEnumerable<WeatherForecast> NegotiateStream()
+        public IAsyncEnumerable<WeatherForecast> NegotiateStream(CancellationToken cancellationToken = default(CancellationToken))
         {
-            return StreamWeatherForecastsAsync();
+            return StreamWeatherForecastsAsync(cancellationToken);
         }
 
         [HttpPost("stream")]
@@ -60,12 +61,12 @@ namespace Demo.Ndjson.AsyncStreams.AspNetCore.Mvc
             return Ok();
         }
 
-        private async IAsyncEnumerable<WeatherForecast> StreamWeatherForecastsAsync()
+        private async IAsyncEnumerable<WeatherForecast> StreamWeatherForecastsAsync(CancellationToken cancellationToken = default(CancellationToken))
         {
             for (int daysFromToday = 1; daysFromToday <= 10; daysFromToday++)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 WeatherForecast weatherForecast = await _weatherForecaster.GetWeatherForecastAsync(daysFromToday);
-
                 yield return weatherForecast;
             };
         }
